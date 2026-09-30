@@ -3,23 +3,21 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
-# Load .env variables
 load_dotenv()
 
-# Read database URL from environment
+# Read the URL and force psycopg2 driver
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Create engine
-engine = create_engine(DATABASE_URL)
+# Render gives URLs like "postgresql://..." — we force psycopg2
+if DATABASE_URL and DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
 
-# Create session factory
+engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
-# Base class for models
 class Base(DeclarativeBase):
     pass
 
-# Dependency: open/close DB session per request
 def get_db():
     db = SessionLocal()
     try:
