@@ -160,3 +160,12 @@ h1 {
 .cancel-btn:hover {
   background: #fee2e2;
 }
+.error {
+  background: #fee2e2;
+  color: #ef4444;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  text-align: center;
+}

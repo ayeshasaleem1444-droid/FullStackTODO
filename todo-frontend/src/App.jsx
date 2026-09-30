@@ -1,54 +1,88 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./App.css";
+import { fetchTodos, createTodo, updateTodo, deleteTodo } from "./api";
 
 function App() {
-  // Mock todos (will replace with API later)
-  const [todos, setTodos] = useState([
-    { id: 1, title: "Learn React", completed: false },
-    { id: 2, title: "Build Todo UI", completed: true },
-    { id: 3, title: "Connect to API", completed: false },
-  ]);
-
+  const [todos, setTodos] = useState([]);
   const [inputValue, setInputValue] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [editValue, setEditValue] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const addTodo = () => {
+  // ===== LOAD TODOS FROM BACKEND =====
+  useEffect(() => {
+    loadTodos();
+  }, []);
+
+  const loadTodos = async () => {
+    try {
+      setLoading(true);
+      const data = await fetchTodos();
+      setTodos(data);
+      setError(null);
+    } catch (err) {
+      setError("Could not load todos. Is the backend running?");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ===== ADD =====
+  const addTodo = async () => {
     if (inputValue.trim() === "") return;
-    const newTodo = {
-      id: Date.now(),
-      title: inputValue,
-      completed: false,
-    };
-    setTodos([...todos, newTodo]);
-    setInputValue("");
+
+    try {
+      const newTodo = await createTodo(inputValue);
+      setTodos([...todos, newTodo]);
+      setInputValue("");
+    } catch (err) {
+      setError("Failed to add todo");
+      console.error(err);
+    }
   };
 
-  const toggleTodo = (id) => {
-    setTodos(
-      todos.map((todo) =>
-        todo.id === id ? { ...todo, completed: !todo.completed } : todo,
-      ),
-    );
+  // ===== TOGGLE =====
+  const toggleTodo = async (id, currentStatus) => {
+    try {
+      const updated = await updateTodo(id, { completed: !currentStatus });
+      setTodos(todos.map((t) => (t.id === id ? updated : t)));
+    } catch (err) {
+      setError("Failed to update todo");
+      console.error(err);
+    }
   };
 
-  const deleteTodo = (id) => {
-    setTodos(todos.filter((todo) => todo.id !== id));
+  // ===== DELETE =====
+  const handleDelete = async (id) => {
+    try {
+      await deleteTodo(id);
+      setTodos(todos.filter((t) => t.id !== id));
+    } catch (err) {
+      setError("Failed to delete todo");
+      console.error(err);
+    }
   };
+
+  // ===== EDIT =====
   const startEdit = (todo) => {
     setEditingId(todo.id);
     setEditValue(todo.title);
   };
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (editValue.trim() === "") return;
-    setTodos(
-      todos.map((todo) =>
-        todo.id === editingId ? { ...todo, title: editValue } : todo,
-      ),
-    );
-    setEditingId(null);
-    setEditValue("");
+
+    try {
+      const updated = await updateTodo(editingId, { title: editValue });
+      setTodos(todos.map((t) => (t.id === editingId ? updated : t)));
+      setEditingId(null);
+      setEditValue("");
+    } catch (err) {
+      setError("Failed to save edit");
+      console.error(err);
+    }
   };
 
   const cancelEdit = () => {
@@ -60,13 +94,17 @@ function App() {
     if (e.key === "Enter") saveEdit();
     if (e.key === "Escape") cancelEdit();
   };
+
   const handleKeyPress = (e) => {
     if (e.key === "Enter") addTodo();
   };
 
+  // ===== RENDER =====
   return (
     <div className="app">
       <h1>📝 My Todo App</h1>
+
+      {error && <p className="error">{error}</p>}
 
       <div className="input-section">
         <input
@@ -79,59 +117,59 @@ function App() {
         <button onClick={addTodo}>+ Add</button>
       </div>
 
-      <ul className="todo-list">
-        {todos.map((todo) => (
-          <li key={todo.id} className={todo.completed ? "completed" : ""}>
-            <input
-              type="checkbox"
-              checked={todo.completed}
-              onChange={() => toggleTodo(todo.id)}
-            />
-
-            {editingId === todo.id ? (
-              // 👇 Edit mode: show an input
+      {loading ? (
+        <p className="empty-state">Loading todos...</p>
+      ) : (
+        <ul className="todo-list">
+          {todos.map((todo) => (
+            <li key={todo.id} className={todo.completed ? "completed" : ""}>
               <input
-                type="text"
-                className="edit-input"
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onKeyDown={handleEditKeyPress}
-                autoFocus
+                type="checkbox"
+                checked={todo.completed}
+                onChange={() => toggleTodo(todo.id, todo.completed)}
               />
-            ) : (
-              // 👇 Display mode: show the title
-              <span className="todo-title">{todo.title}</span>
-            )}
 
-            {editingId === todo.id ? (
-              // 👇 Edit mode: show Save and Cancel buttons
-              <>
-                <button className="save-btn" onClick={saveEdit}>
-                  💾
-                </button>
-                <button className="cancel-btn" onClick={cancelEdit}>
-                  ✕
-                </button>
-              </>
-            ) : (
-              // 👇 Display mode: show Edit and Delete buttons
-              <>
-                <button className="edit-btn" onClick={() => startEdit(todo)}>
-                  ✏️
-                </button>
-                <button
-                  className="delete-btn"
-                  onClick={() => deleteTodo(todo.id)}
-                >
-                  ✕
-                </button>
-              </>
-            )}
-          </li>
-        ))}
-      </ul>
+              {editingId === todo.id ? (
+                <input
+                  type="text"
+                  className="edit-input"
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onKeyDown={handleEditKeyPress}
+                  autoFocus
+                />
+              ) : (
+                <span className="todo-title">{todo.title}</span>
+              )}
 
-      {todos.length === 0 && (
+              {editingId === todo.id ? (
+                <>
+                  <button className="save-btn" onClick={saveEdit}>
+                    💾
+                  </button>
+                  <button className="cancel-btn" onClick={cancelEdit}>
+                    ✕
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button className="edit-btn" onClick={() => startEdit(todo)}>
+                    ✏️
+                  </button>
+                  <button
+                    className="delete-btn"
+                    onClick={() => handleDelete(todo.id)}
+                  >
+                    ✕
+                  </button>
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {!loading && todos.length === 0 && (
         <p className="empty-state">No todos yet. Add one above! 👆</p>
       )}
     </div>
