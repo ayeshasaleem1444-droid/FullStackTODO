@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:8000";
+const API_URL = "https://fullstacktodoweb.onrender.com";
 
 // Get all todos
 export const fetchTodos = async () => {
