@@ -1,13 +1,14 @@
 from pydantic import BaseModel, ConfigDict
 
 
-# ===== For creating a todo (what the user sends) =====
+# =====Schema1: For creating a todo (what the user sends) =====
 class TodoCreate(BaseModel):
     title: str
 
 
-# ===== For updating a todo (partial update) =====
+# =====Schema2: For updating a todo (partial update) =====
 class TodoUpdate(BaseModel):
+    # it means | that we could add string or nothing at all
     title: str | None = None
     completed: bool | None = None
 
